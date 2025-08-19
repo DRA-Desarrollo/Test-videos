@@ -1,0 +1,13 @@
+[core]
+	repositoryformatversion = 0
+	filemode = false
+	bare = false
+	logallrefupdates = true
+	symlinks = false
+	ignorecase = true
+[remote "Test-videos"]
+	url = https://github.com/DRA-Desarrollo/Test-videos
+	fetch = +refs/heads/*:refs/remotes/Test-videos/*
+[branch "main"]
+	remote = Test-videos
+	merge = refs/heads/main
