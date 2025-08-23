@@ -1,10 +1,12 @@
 import React, { useEffect } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
+import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useVideoStore } from '../store/videoStore';
 import { Card, CardActionArea, CardMedia, CardContent, Typography, Box } from '@mui/material';
+import Navbar from '../components/Navbar';
 
 const CourseListPage: React.FC = () => {
   const { courses, fetchCourses, loadingCourse, errorCourse } = useVideoStore();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchCourses();
@@ -19,13 +21,15 @@ const CourseListPage: React.FC = () => {
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" fontWeight={700} color="primary" sx={{ mb: 4, textAlign: 'center' }}>
-        Cursos Disponibles
-      </Typography>
-      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
-        {courses.map((course) => (
-          <Card key={course.id} sx={{ width: 345, transition: '0.3s', '&:hover': { transform: 'scale(1.03)' } }}>
+    <>
+      <Navbar onBack={() => navigate('/')} />
+      <Box sx={{ p: 3 }}>
+        <Typography variant="h4" fontWeight={700} color="primary" sx={{ mb: 4, textAlign: 'center' }}>
+          Cursos Disponibles
+        </Typography>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
+          {courses.map((course) => (
+            <Card key={course.id} sx={{ width: 345, transition: '0.3s', '&:hover': { transform: 'scale(1.03)' } }}>
             <CardActionArea component={RouterLink} to={`/course/${course.orden}`}>
               <CardMedia
                 component="div"
@@ -48,10 +52,11 @@ const CourseListPage: React.FC = () => {
                 </Typography>
               </CardContent>
             </CardActionArea>
-          </Card>
-        ))}
+            </Card>
+          ))}
+        </Box>
       </Box>
-    </Box>
+    </>
   );
 };
 

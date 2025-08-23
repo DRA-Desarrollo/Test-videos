@@ -1,16 +1,15 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, lazy, Suspense } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme, CssBaseline, useMediaQuery } from '@mui/material';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
-import HomePage from './pages/HomePage';
-import NotFoundPage from './pages/NotFoundPage';
-import CourseListPage from './pages/CourseListPage';
 import { useAuthStore } from './store/authStore';
 import './App.css';
-import Navbar from './components/Navbar';
-import Dashboard from './pages/Dashboard';
-import AboutCourse from './pages/AboutCourse';
+
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const CourseListPage = lazy(() => import('./pages/CourseListPage'));
+const AboutCourse = lazy(() => import('./pages/AboutCourse'));
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -71,29 +70,30 @@ function App() {
     <ThemeProvider theme={theme}>
       <CssBaseline />
       <Router>
-        <Navbar mode={mode} onToggleMode={() => setMode(prev => (prev === 'light' ? 'dark' : 'light'))} />
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<RegisterPage />} />
-          <Route
-            path="/course/:courseOrder"
-            element={
-              <ProtectedRoute>
-                <HomePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <CourseListPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/about" element={<AboutCourse />} />
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
+        <Suspense fallback={<div>Cargando...</div>}>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<RegisterPage />} />
+            <Route
+              path="/course/:courseOrder"
+              element={
+                <ProtectedRoute>
+                  <HomePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <CourseListPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/about" element={<AboutCourse />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
+        </Suspense>
       </Router>
     </ThemeProvider>
   );

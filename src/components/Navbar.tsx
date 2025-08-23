@@ -5,13 +5,16 @@ import { Link } from 'react-router-dom';
 import { MdDarkMode, MdLightMode } from 'react-icons/md';
 import { useAuthStore } from '../store/authStore';
 import { useVideoStore } from '../store/videoStore';
+import { FaArrowLeft } from 'react-icons/fa';
 
 interface NavbarProps {
   mode?: 'light' | 'dark';
   onToggleMode?: () => void;
+  showBackButton?: boolean;
+  onBack?: () => void;
 }
 
-const Navbar: React.FC<NavbarProps> = ({ mode = 'light', onToggleMode }) => {
+const Navbar: React.FC<NavbarProps> = ({ mode = 'light', onToggleMode, showBackButton = false, onBack }) => {
   const { user, signOut } = useAuthStore();
   const { course } = useVideoStore();
 
@@ -38,9 +41,15 @@ const Navbar: React.FC<NavbarProps> = ({ mode = 'light', onToggleMode }) => {
               <Button color="inherit" startIcon={<FaUserCircle />} disabled sx={{ textTransform: 'none', opacity: 0.85 }}>
                 {user.email ?? 'Usuario'}
               </Button>
-              <Button color="inherit" onClick={signOut} startIcon={<FaSignOutAlt />}>
-                Salir
-              </Button>
+              {showBackButton ? (
+                <Button color="inherit" onClick={onBack} startIcon={<FaArrowLeft />}>
+                  Volver
+                </Button>
+              ) : (
+                <Button color="inherit" onClick={signOut} startIcon={<FaSignOutAlt />}>
+                  Salir
+                </Button>
+              )}
             </>
           ) : (
             <Button color="inherit" component={Link} to="/login" startIcon={<FaSignInAlt />}>
