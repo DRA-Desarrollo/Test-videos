@@ -1,12 +1,12 @@
 import { create } from 'zustand';
-import { supabase } from '../utils/supabaseClient';
+import { supabase } from '../utils/supabaseClient'; // Ruta correcta a tu cliente de Supabase
 import { getCourse, getCourses } from '../services/courses';
 import { getVideosByCourseId } from '../services/videos';
-import type { VideoState } from '../types/store';
-import type { Video } from '../types/data';
+import { Video, UserTestCompletion } from '../types/data'; // Importa los tipos de datos
+import type { VideoState } from '../types/store'; // Importa VideoState desde el archivo correcto
 
 export const useVideoStore = create<VideoState>((set, get) => ({
-  videos: [],
+videos: [],
   currentVideoId: null,
   loadingVideos: false,
   errorVideos: null,
@@ -43,6 +43,24 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     }
   },
 
+  fetchVideos: async () => {
+    set({ loadingVideos: true, errorVideos: null });
+    try {
+      const { data, error } = await supabase
+        .from('videos')
+        .select('*')
+        .order('order', { ascending: true });
+
+      if (error) {
+        throw error;
+      }
+      set({ videos: data || [], loadingVideos: false });
+    } catch (error: unknown) {
+      console.error('Error al obtener videos:', (error as { message: string }).message);
+      set({ errorVideos: (error as { message: string }).message, loadingVideos: false });
+    }
+  },
+
   fetchVideosByCourseId: async (courseId: string, userId: string | undefined) => {
     set({ loadingVideos: true, errorVideos: null });
     try {
@@ -55,7 +73,7 @@ export const useVideoStore = create<VideoState>((set, get) => ({
       set({ errorVideos: errorMessage, loadingVideos: false });
     }
   },
-
+  
   setCurrentVideo: (videoId: string | null) => {
     set({ currentVideoId: videoId });
   },
@@ -129,8 +147,8 @@ export const useVideoStore = create<VideoState>((set, get) => ({
 
     return { success: scorePercent >= 70, score: scorePercent };
   },
-
-  // Calcula el progreso del curso (ej: va por el 5 de 12)
+  
+   // Calcula el progreso del curso (ej: va por el 5 de 12)
   getCourseProgress: () => {
     const videos = get().videos || [];
     const passedIds = new Set(
@@ -152,15 +170,10 @@ export const useVideoStore = create<VideoState>((set, get) => ({
   },
 
   determineAndSetCurrentVideo: async (userId: string | undefined) => {
-    const { course } = get();
-    if (!course) {
-      // If there is no course, we can't determine the video.
-      // Maybe fetch a default course or wait for one to be selected.
-      return;
-    }
-
+    // Si no hay usuario logueado, o si los videos aún no se han cargado,
+    // intenta cargar los videos y establece el video actual al primero.
     if (get().videos.length === 0) {
-      await get().fetchVideosByCourseId(course.id, userId);
+      await get().fetchVideos();
     }
     const allVideos = get().videos;
 
@@ -170,9 +183,8 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     }
 
     if (!userId) {
-      // Si no hay usuario logueado, tomar el video con menor 'order'
-      const sorted = [...allVideos].sort((a, b) => a.order - b.order);
-      const firstVideo = sorted[0] || null;
+      // Si no hay usuario logueado, por defecto va al primer video
+      const firstVideo = allVideos.find(video => video.order === 1) || allVideos[0];
       set({ currentVideoId: firstVideo ? firstVideo.id : null });
       return;
     }
@@ -181,33 +193,21 @@ export const useVideoStore = create<VideoState>((set, get) => ({
     try {
       // 1. Obtener las pruebas completadas por el usuario
       const { data: completedTestsData, error: completedTestsError } = await supabase
-        .from('user_scores') // Tabla de puntajes del usuario
-        .select('video_id, score, passed, completed_at')
+        .from('user_test_completions') // Asume que esta es tu tabla de completaciones de tests
+        .select('video_id')
         .eq('user_id', userId);
 
       if (completedTestsError) {
         throw completedTestsError;
       }
 
-      // Mapear completions al estado local
-      set({
-        userTestCompletions: (completedTestsData || []).map((c: any) => ({
-          user_id: userId,
-          video_id: String(c.video_id),
-          completed_at: c.completed_at || new Date().toISOString(),
-          passed: !!c.passed,
-          scorePercent: typeof c.score === 'number' ? c.score : undefined,
-        })),
-      });
-
-      const completedVideoIds = new Set((completedTestsData || []).map((c: any) => c.video_id));
+      const completedVideoIds = new Set(completedTestsData?.map(c => c.video_id) || []);
 
       let nextVideo: Video | null = null;
-      const sorted = [...allVideos].sort((a, b) => a.order - b.order);
 
       if (completedVideoIds.size === 0) {
-        // Primer video: el de menor 'order'
-        nextVideo = sorted[0] || null;
+        // Si no ha completado ningún test, va al video con orden 1
+        nextVideo = allVideos.find(video => video.order === 1) || allVideos[0];
       } else {
         // Encontrar el orden más alto de los videos completados
         const completedVideoOrders = allVideos
@@ -216,21 +216,22 @@ export const useVideoStore = create<VideoState>((set, get) => ({
 
         const maxCompletedOrder = completedVideoOrders.length > 0
           ? Math.max(...completedVideoOrders)
-          : -Infinity;
+          : 0;
 
-        // Siguiente es el primer video con 'order' mayor al máximo completado
-        nextVideo = sorted.find(video => video.order > maxCompletedOrder) || null;
+        // Buscar el siguiente video en secuencia
+        nextVideo = allVideos.find(video => video.order === maxCompletedOrder + 1) || null;
 
         // Si no se encontró un siguiente video y el usuario ha completado todos los videos
         if (!nextVideo && completedVideoIds.size === allVideos.length) {
-          // Volver al primero como fallback
-          nextVideo = sorted[0] || null;
+          // El usuario ha completado todos los tests, se le puede mostrar el primero o dejarlo a criterio de la UI
+          // Aquí lo establecemos al primer video para tener una posición.
+          nextVideo = allVideos[0];
         }
       }
 
       set({ currentVideoId: nextVideo ? nextVideo.id : null, loadingVideos: false });
+
     } catch (error: unknown) {
-        // Calcula el progreso del test actual (0-100%)
       console.error('Error al determinar el video actual:', (error as { message: string }).message);
       set({ errorVideos: (error as { message: string }).message, loadingVideos: false });
     }

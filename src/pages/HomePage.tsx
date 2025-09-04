@@ -9,7 +9,12 @@ import { Drawer, IconButton } from '@mui/material';
 import { FaBars } from 'react-icons/fa';
 import Navbar from '../components/Navbar';
 
-const HomePage: React.FC = () => {
+interface HomePageProps {
+  mode: 'light' | 'dark';
+  onToggleMode: () => void;
+}
+
+const HomePage: React.FC<HomePageProps> = ({mode, onToggleMode }) => {
   const { courseOrder } = useParams<{ courseOrder: string }>();
   const { user, signOut } = useAuthStore();
   const { getCourseProgress, fetchCourse, course: currentCourse, loadingCourse, errorCourse } = useVideoStore();
@@ -22,7 +27,7 @@ const HomePage: React.FC = () => {
       fetchCourse(parseInt(courseOrder, 10), user?.id);
     }
   }, [courseOrder, fetchCourse, user]);
-
+  
   if (loadingCourse) {
     return <div>Cargando curso...</div>;
   }
@@ -31,13 +36,13 @@ const HomePage: React.FC = () => {
     return <div>Error al cargar el curso: {errorCourse}</div>;
   }
 
-  if (!currentCourse) {
+ if (!currentCourse) {
     return <div>Curso no encontrado.</div>;
   }
-
+  
   return (
     <>
-      <Navbar showBackButton onBack={() => navigate('/')} />
+      <Navbar mode={mode} onToggleMode={onToggleMode} showBackButton onBack={() => navigate('/')} />
       <div style={{ display: 'flex', gap: 12, padding: 12, boxSizing: 'border-box' }}>
         <Drawer anchor="left" open={open} onClose={() => setOpen(false)}>
           <div style={{ width: 260, padding: 8 }}>

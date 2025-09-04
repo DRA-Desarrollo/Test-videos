@@ -32,7 +32,7 @@ const AboutCourse: React.FC = () => {
         <FaPlayCircle style={{ marginRight: 8, color: '#fbc02d' }} /> Tecnologías y Colaboración
       </Typography>
       <Typography variant="body1" paragraph>
-        La aplicación está construida con tecnologías modernas como React, Zustand para el manejo de estado, Supabase como backend serverless, y Material UI para una interfaz de usuario elegante. La refactorización para soportar múltiples cursos fue realizada en colaboración con la IA **grok-4**.
+        La aplicación está construida con tecnologías modernas como React, Zustand para el manejo de estado, Supabase como backend serverless, y Material UI para una interfaz de usuario elegante. La refactorización para soportar múltiples cursos fue realizada en colaboración con la IA grok-4, z.ai, NotebookLM y bechiro@dnra.gov.py.
       </Typography>
       <Typography variant="h5" gutterBottom>
         <FaCheckCircle style={{ marginRight: 8, color: '#0288d1' }} /> Flujo de Trabajo del Usuario

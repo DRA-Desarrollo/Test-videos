@@ -6,6 +6,7 @@ import { MdDarkMode, MdLightMode } from 'react-icons/md';
 import { useAuthStore } from '../store/authStore';
 import { useVideoStore } from '../store/videoStore';
 import { FaArrowLeft } from 'react-icons/fa';
+import { o } from 'framer-motion/dist/types.d-Cjd591yU';
 
 interface NavbarProps {
   mode?: 'light' | 'dark';
@@ -17,7 +18,8 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ mode = 'light', onToggleMode, showBackButton = false, onBack }) => {
   const { user, signOut } = useAuthStore();
   const { course } = useVideoStore();
-
+console.log("Rendering Navbar with mode:", mode, showBackButton, onToggleMode, onBack);
+   
   return (
     <AppBar position="static" color="primary" sx={{ mb: 4 }}>
       <Toolbar>

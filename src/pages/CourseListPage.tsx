@@ -4,7 +4,12 @@ import { useVideoStore } from '../store/videoStore';
 import { Card, CardActionArea, CardMedia, CardContent, Typography, Box } from '@mui/material';
 import Navbar from '../components/Navbar';
 
-const CourseListPage: React.FC = () => {
+interface CourseListPageProps {
+  mode: 'light' | 'dark';
+  onToggleMode: () => void;
+}
+
+const CourseListPage: React.FC <CourseListPageProps> = ({ mode, onToggleMode }) => {
   const { courses, fetchCourses, loadingCourse, errorCourse } = useVideoStore();
   const navigate = useNavigate();
 
@@ -22,7 +27,7 @@ const CourseListPage: React.FC = () => {
 
   return (
     <>
-      <Navbar onBack={() => navigate('/')} />
+      <Navbar mode={mode} onToggleMode={onToggleMode} onBack={() => navigate('/')} />
       <Box sx={{ p: 3 }}>
         <Typography variant="h4" fontWeight={700} color="primary" sx={{ mb: 4, textAlign: 'center' }}>
           Cursos Disponibles
