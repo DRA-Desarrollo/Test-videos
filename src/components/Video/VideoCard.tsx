@@ -52,130 +52,150 @@ const VideoCard: React.FC<VideoCardProps> = ({ video }) => {
       overflow: 'hidden'
     }}>
       {/* Header con información del video */}
-      <Box sx={{ p: 0.5, backgroundColor: 'background.paper' }}>
+      <Box sx={{ p: 0.5, backgroundColor: 'background.paper', flexShrink: 0 }}>
         <Typography variant="h6" sx={{ fontSize: '0.8rem', lineHeight: 1.1 }}>
           {video.title}
         </Typography>
       </Box>
 
-      {/* Área del video */}
-      <Box sx={{ flex: 1, backgroundColor: '#000', minHeight: 200, position: 'relative' }}>
-        {!embedFailed && embedUrl ? (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            style={{ width: '100%', height: '100%' }}
-          >
-            <iframe
-              src={embedUrl}
-              title={video.title}
-              onError={handleEmbedError}
-              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-              allowFullScreen
+      {/* Área del video - con relación de aspecto 16:9 */}
+      <Box sx={{ 
+        flex: 1, 
+        backgroundColor: '#000', 
+        position: 'relative',
+        minHeight: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <Box sx={{ 
+          width: '100%',
+          height: 0,
+          paddingBottom: '56.25%', // Relación de aspecto 16:9
+          position: 'relative'
+        }}>
+          {!embedFailed && embedUrl ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               style={{ 
-                position: 'absolute', 
-                top: 0, 
-                left: 0, 
+                position: 'absolute',
+                top: 0,
+                left: 0,
                 width: '100%', 
-                height: '100%', 
-                border: 'none' 
+                height: '100%' 
               }}
-            />
-          </motion.div>
-        ) : (
-          <Box
-            onClick={handleVideoClick}
-            sx={{ 
-              width: '100%', 
-              height: '100%',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'relative',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}
-          >
-            {thumbnailUrl ? (
-              <>
-                <CardMedia
-                  component="img"
-                  image={thumbnailUrl}
-                  alt={video.title}
-                  sx={{ 
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover'
-                  }}
-                />
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  sx={{ 
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '100%',
-                    backgroundColor: 'rgba(0,0,0,0.4)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                >
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.95 }}
+            >
+              <iframe
+                src={embedUrl}
+                title={video.title}
+                onError={handleEmbedError}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                style={{ 
+                  width: '100%', 
+                  height: '100%', 
+                  border: 'none' 
+                }}
+              />
+            </motion.div>
+          ) : (
+            <Box
+              onClick={handleVideoClick}
+              sx={{ 
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%', 
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                textDecoration: 'none'
+              }}
+            >
+              {thumbnailUrl ? (
+                <>
+                  <CardMedia
+                    component="img"
+                    image={thumbnailUrl}
+                    alt={video.title}
                     sx={{ 
-                      width: 48, 
-                      height: 48, 
-                      borderRadius: '50%',
-                      backgroundColor: 'rgba(255,255,255,0.95)',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover'
+                    }}
+                  />
+                  <motion.div 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    style={{ 
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      height: '100%',
+                      backgroundColor: 'rgba(0,0,0,0.4)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center'
                     }}
                   >
-                    <Box 
-                      component="span" 
-                      sx={{ 
-                        width: 0, 
-                        height: 0, 
-                        borderTop: '9px solid transparent',
-                        borderBottom: '9px solid transparent',
-                        borderLeft: '15px solid #ff0000',
-                        marginLeft: '3px'
+                    <motion.div
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.95 }}
+                      style={{ 
+                        width: 48, 
+                        height: 48, 
+                        borderRadius: '50%',
+                        backgroundColor: 'rgba(255,255,255,0.95)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center'
                       }}
-                    />
+                    >
+                      <Box 
+                        component="span" 
+                        sx={{ 
+                          width: 0, 
+                          height: 0, 
+                          borderTop: '9px solid transparent',
+                          borderBottom: '9px solid transparent',
+                          borderLeft: '15px solid #ff0000',
+                          marginLeft: '3px'
+                        }}
+                      />
+                    </motion.div>
                   </motion.div>
-                </motion.div>
-              </>
-            ) : (
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                height: '100%',
-                color: 'white',
-                textAlign: 'center',
-                p: 2,
-                flexDirection: 'column',
-                gap: 1
-              }}>
-                <Typography variant="body1" sx={{ fontSize: '0.9rem' }}>
-                  Ver video en YouTube
-                </Typography>
-                <Typography variant="body2" sx={{ fontSize: '0.8rem', opacity: 0.8 }}>
-                  (Haz clic para abrir)
-                </Typography>
-              </Box>
-            )}
-          </Box>
-        )}
+                </>
+              ) : (
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  height: '100%',
+                  color: 'white',
+                  textAlign: 'center',
+                  p: 2,
+                  flexDirection: 'column',
+                  gap: 1
+                }}>
+                  <Typography variant="body1" sx={{ fontSize: '0.9rem' }}>
+                    Ver video en YouTube
+                  </Typography>
+                  <Typography variant="body2" sx={{ fontSize: '0.8rem', opacity: 0.8 }}>
+                    (Haz clic para abrir)
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+        </Box>
       </Box>
     </Box>
   );

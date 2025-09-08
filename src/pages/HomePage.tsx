@@ -5,10 +5,9 @@ import VideoCard from '../components/Video/VideoCard';
 import VideoSidebar from '../components/Video/VideoSidebar';
 import { CourseProgressBar, TestProgressBar } from '../components/ProgressBars';
 import { useVideoStore } from '../store/videoStore';
-import { Drawer, IconButton, Button, Box, Modal, Typography, Stack } from '@mui/material';
+import { Drawer, IconButton, Button, Box, Stack, Typography, Divider } from '@mui/material';
 import { FaBars, FaStepBackward, FaStepForward, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import Navbar from '../components/Navbar';
-import Test from '../components/Test/Test';
 import { getQuestionsByVideoId } from '../services/questions';
 
 interface HomePageProps {
@@ -23,8 +22,6 @@ const HomePage: React.FC<HomePageProps> = ({mode, onToggleMode }) => {
   const courseProgress = getCourseProgress();
   const testPercent = currentVideoId ? getTestProgress(currentVideoId) : 0;
   const [open, setOpen] = React.useState(false);
-  const [testModalOpen, setTestModalOpen] = useState(false);
-  const [questions, setQuestions] = useState<any[]>([]);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const navigate = useNavigate();
 
@@ -93,13 +90,26 @@ const HomePage: React.FC<HomePageProps> = ({mode, onToggleMode }) => {
   };
 
   const handleOpenTest = async () => {
-    if (!currentVideo || !user) return;
+    if (!currentVideo || !user) {
+      console.log('No hay currentVideo o user:', { currentVideo, user });
+      return;
+    }
     
     setLoadingQuestions(true);
     try {
+      console.log('Cargando preguntas para video:', currentVideo.id);
       const questionsData = await getQuestionsByVideoId(currentVideo.id);
-      setQuestions(questionsData);
-      setTestModalOpen(true);
+      console.log('Preguntas cargadas:', questionsData?.length || 0);
+      
+      // Guardar las preguntas en sessionStorage como respaldo
+      if (questionsData) {
+        sessionStorage.setItem('testQuestions', JSON.stringify(questionsData));
+        sessionStorage.setItem('testVideoTitle', currentVideo.title);
+        sessionStorage.setItem('testVideoId', currentVideo.id);
+      }
+      
+      // Redirigir a la página de test
+      navigate(`/test/${currentVideo.id}`);
     } catch (error) {
       console.error('Error al cargar preguntas:', error);
     } finally {
@@ -108,47 +118,59 @@ const HomePage: React.FC<HomePageProps> = ({mode, onToggleMode }) => {
   };
 
   const handleCloseTest = () => {
-    setTestModalOpen(false);
-    setQuestions([]);
+    // Ya no se necesita, el test está en otra página
   };
-
 
 useEffect(() => {
   if (!courseId) return;
   if (loading) return;
-  //console.log('(HomePage.tsx) Fetching course for courseId:', courseId, 'user:', user?.id);
   fetchCourse(courseId, user?.id);
 }, [courseId, loading, user?.id]);
   
-  //console.log('(HomePage.tsx 34) Current course:', currentCourse);  
   if (loadingCourse) {
-    return <div>Cargando curso...</div>;
+    return <Box>Cargando curso...</Box>;
   }
 
   if (errorCourse) {
-    return <div style={{ color: 'red' }}>Error al cargar el curso: {errorCourse}</div>;
+    return <Typography color="error">Error al cargar el curso: {errorCourse}</Typography>;
   }
 
  if (!currentCourse) {
-    return <div>Curso no encontrado.</div>;
+    return <Typography>Curso no encontrado.</Typography>;
   }
 
- 
   return (
     <>
       <Navbar mode={mode} onToggleMode={onToggleMode} showBackButton onBack={() => navigate('/')} />
-      <div style={{ display: 'flex', gap: 1, padding: 1, boxSizing: 'border-box', height: 'calc(100vh - 40px)' }}>
+      
+      <Box sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: 'calc(100vh - 40px)',
+        overflow: 'hidden'
+      }}>
         {/* Panel colapsible con lista de videos */}
         <Drawer anchor="left" open={open} onClose={() => setOpen(false)}>
-          <div style={{ width: 260, padding: 8 }}>
-            <VideoSidebar video={currentVideo}/>
-          </div>
+          <Box sx={{ width: 260, p: 2 }}>
+            <VideoSidebar 
+              video={currentVideo}
+              videos={videos}
+              currentVideoId={currentVideoId}
+              userTestCompletions={userTestCompletions}
+              onVideoSelect={setCurrentVideo}
+            />
+          </Box>
         </Drawer>
         
         {/* Contenido principal */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 1, overflow: 'hidden' }}>
+        <Box sx={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
           {/* Barra de navegación y progreso */}
-          <Stack direction="row" spacing={0.5} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 0.5 }}>
             <IconButton onClick={() => setOpen(true)} aria-label="abrir módulos">
               <FaBars />
             </IconButton>
@@ -159,32 +181,51 @@ useEffect(() => {
             </Box>
           </Stack>
 
+          <Divider />
+
           {/* Card del video actual */}
-          <div style={{ flex: 1, minHeight: 0 }}>
+          <Box sx={{ 
+            flex: 1, 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            p: 0.5,
+            minHeight: 0
+          }}>
             {currentVideo ? (
-              <VideoCard video={currentVideo} />
+              <Box sx={{ 
+                width: '100%',
+                maxWidth: 900,
+                height: '100%',
+                maxHeight: '45vh'
+              }}>
+                <VideoCard video={currentVideo} />
+              </Box>
             ) : (
-              <div style={{ 
+              <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center', 
                 height: '100%', 
-                border: '1px solid #ccc', 
-                borderRadius: 8,
-                backgroundColor: '#f5f5f5'
+                border: 1, 
+                borderColor: 'grey.300',
+                borderRadius: 1,
+                bgcolor: 'grey.100'
               }}>
                 <Typography>No hay videos disponibles</Typography>
-              </div>
+              </Box>
             )}
-          </div>
+          </Box>
+
+          <Divider />
 
           {/* Barra de progreso del test, navegador y botón */}
-          <Stack direction="column" spacing={0.5} flex={1} overflow="hidden">
+          <Stack spacing={0.3} sx={{ p: 0.3 }}>
             <TestProgressBar percent={testPercent} />
             
-            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={0.5}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
               {/* Navegación entre videos */}
-              <Stack direction="row" alignItems="center" spacing={0.25}>
+              <Stack direction="row" alignItems="center" spacing={1}>
                 <IconButton 
                   onClick={navigateToFirst} 
                   disabled={!canNavigateToFirst}
@@ -201,7 +242,7 @@ useEffect(() => {
                 >
                   <FaChevronLeft />
                 </IconButton>
-                <Typography variant="body2" sx={{ minWidth: 50, textAlign: 'center', fontSize: '0.6rem' }}>
+                <Typography variant="body2" sx={{ minWidth: 50, textAlign: 'center', fontSize: '0.75rem' }}>
                   {currentVideo ? `${currentVideo.order}/${videos.length}` : '0/0'}
                 </Typography>
                 <IconButton 
@@ -223,67 +264,28 @@ useEffect(() => {
               </Stack>
 
               {/* Botón "Hacer Test" y estado */}
-              <Stack direction="row" alignItems="center" spacing={0.25}>
+              <Stack direction="row" alignItems="center" spacing={1}>
                 <Button
                   variant="contained"
                   color="primary"
                   onClick={handleOpenTest}
                   disabled={disableTest || loadingQuestions}
                   size="small"
-                  sx={{ minWidth: 70, fontSize: '0.65rem', py: 0.25 }}
+                  sx={{ minWidth: 80, fontSize: '0.75rem' }}
                 >
                   {loadingQuestions ? 'Cargando...' : 'Hacer Test'}
                 </Button>
                 
                 {allVideosCompleted && isLast && (
-                  <Typography color="success.main" variant="body2" sx={{ fontSize: '0.6rem' }}>
+                  <Typography color="success.main" variant="body2" sx={{ fontSize: '0.75rem' }}>
                     ¡Curso completado!
                   </Typography>
                 )}
               </Stack>
             </Stack>
           </Stack>
-        </div>
-      </div>
-
-      {/* Modal para el Test */}
-      <Modal
-        open={testModalOpen}
-        onClose={handleCloseTest}
-        aria-labelledby="test-modal-title"
-        aria-describedby="test-modal-description"
-      >
-        <Box sx={{
-          position: 'absolute',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '90%',
-          maxWidth: 600,
-          bgcolor: 'background.paper',
-          border: '2px solid #000',
-          boxShadow: 24,
-          p: 4,
-          maxHeight: '80vh',
-          overflowY: 'auto'
-        }}>
-          <Typography id="test-modal-title" variant="h6" component="h2" sx={{ mb: 2 }}>
-            Test: {currentVideo?.title}
-          </Typography>
-          {questions.length > 0 && user && (
-            <Test
-              userId={user.id}
-              videoId={currentVideo.id}
-              questions={questions}
-            />
-          )}
-          <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end' }}>
-            <Button onClick={handleCloseTest} variant="outlined">
-              Cerrar
-            </Button>
-          </Box>
         </Box>
-      </Modal>
+      </Box>
     </>
   );
 };
