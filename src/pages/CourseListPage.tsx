@@ -3,6 +3,7 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useVideoStore } from '../store/videoStore';
 import { Card, CardActionArea, CardMedia, CardContent, Typography, Box } from '@mui/material';
 import Navbar from '../components/Navbar';
+import { useTheme } from '@mui/material/styles';
 
 interface CourseListPageProps {
   mode: 'light' | 'dark';
@@ -12,6 +13,7 @@ interface CourseListPageProps {
 const CourseListPage: React.FC <CourseListPageProps> = ({ mode, onToggleMode }) => {
   const { courses, fetchCourses, loadingCourse, errorCourse } = useVideoStore();
   const navigate = useNavigate();
+  const theme = useTheme();
 
   useEffect(() => {
     fetchCourses();
@@ -35,7 +37,7 @@ const CourseListPage: React.FC <CourseListPageProps> = ({ mode, onToggleMode }) 
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 4, justifyContent: 'center' }}>
           {courses.map((course) => (
             <Card key={course.id} sx={{ width: 345, transition: '0.3s', '&:hover': { transform: 'scale(1.03)' } }}>
-            <CardActionArea component={RouterLink} to={`/course/${course.orden}`}>
+            <CardActionArea component={RouterLink} to={`/course/${course.id}`}>
               <CardMedia
                 component="div"
                 sx={{
@@ -44,7 +46,7 @@ const CourseListPage: React.FC <CourseListPageProps> = ({ mode, onToggleMode }) 
                   backgroundSize: 'contain',
                   backgroundPosition: 'center',
                   backgroundRepeat: 'no-repeat',
-                  backgroundColor: '#f0f0f0' // Fallback color
+                  backgroundColor: theme.palette.background.paper,
                 }}
                 title={course.name}
               />

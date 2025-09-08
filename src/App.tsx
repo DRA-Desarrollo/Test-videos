@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
-//import HomePage from './pages/HomePage';
+import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
+import AboutCourse from './pages/AboutCourse';
 import { useAuthStore } from './store/authStore';
 import './App.css';
 import CourseListPage from './pages/CourseListPage';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -43,11 +45,16 @@ function App() {
   const theme = createTheme({
     palette: {
       mode: themeMode,
-    },
+      background: {
+        default: themeMode === 'light' ? '#ffffff' : '#121212', // Fondo claro/oscuro
+        paper: themeMode === 'light' ? '#f5f5f5' : '#1e1e1e', // Fondo de tarjetas
+      },
+    },  
   });
 
   return (
     <ThemeProvider theme={theme}>
+      <CssBaseline />
       <Router>
         <Routes>
           <Route path="/login" element={<LoginPage />} />
@@ -60,6 +67,15 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/course/:courseId"
+            element={
+              <ProtectedRoute>
+                <HomePage mode={themeMode} onToggleMode={toggleThemeMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/about" element={<AboutCourse />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
       </Router>

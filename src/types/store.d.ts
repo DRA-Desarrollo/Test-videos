@@ -24,14 +24,14 @@ export interface VideoState {
   loadingCourse: boolean;
   errorCourse: string | null;
   fetchCourses: () => Promise<void>;
-  fetchCourse: (courseOrder: number, userId: string | undefined) => Promise<void>;
+  fetchCourse: (courseId: string, userId: string | undefined) => Promise<void>;
   fetchVideos: () => Promise<void>;
   fetchVideosByCourseId: (courseId: string, userId: string | undefined) => Promise<void>;
   determineAndSetCurrentVideo: (userId: string | undefined) => Promise<void>;
+  fetchUserCompletionsForCourse: (userId: string) => Promise<void>;
   setCurrentVideo: (videoId: string | null) => void;
   getCourseProgress: () => { current: number; total: number; percent: number }; // Asegúrate de incluir esta función
   getTestProgress: (videoId: string) => number; // Asegúrate de que sea exactamente así
-  //userTestCompletions: UserTestCompletion[];
   postUserTestAnswers: (
     userId: string,
     videoId: string | number,

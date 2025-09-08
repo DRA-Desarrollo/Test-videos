@@ -28,13 +28,15 @@ videos: [],
     }
   },
 
-  fetchCourse: async (courseOrder: number, userId: string | undefined) => {
+  fetchCourse: async (courseId: string, userId: string | undefined) => {
     set({ loadingCourse: true, errorCourse: null });
     try {
-      const course = await getCourse(courseOrder);
+      console.log('Fetching course with id:', courseId);
+      const course = await getCourse(courseId);
+      console.log('Fetched course:', course);
       set({ course, loadingCourse: false });
       if (course) {
-        get().fetchVideosByCourseId(course.id, userId);
+        await get().fetchVideosByCourseId(course.id, userId);
       }
     } catch (error: unknown) {
       const errorMessage = (error as { message: string }).message;
@@ -62,11 +64,20 @@ videos: [],
   },
 
   fetchVideosByCourseId: async (courseId: string, userId: string | undefined) => {
-    set({ loadingVideos: true, errorVideos: null });
+    set({ loadingVideos: true, errorVideos: null, currentVideoId: null });
     try {
       const videos = await getVideosByCourseId(courseId);
-      set({ videos, loadingVideos: false });
-      get().determineAndSetCurrentVideo(userId);
+      set({ videos: videos.sort((a,b) => a.order - b.order) });
+      if (userId) {
+        await get().fetchUserCompletionsForCourse(userId);
+      }
+      await get().determineAndSetCurrentVideo(userId);
+      // Fallback extra: asegurar un video seleccionado
+      if (!get().currentVideoId) {
+        const first = [...(get().videos || [])].sort((a, b) => a.order - b.order)[0];
+        set({ currentVideoId: first ? first.id : null });
+      }
+      set({ loadingVideos: false });
     } catch (error: unknown) {
       const errorMessage = (error as { message: string }).message;
       console.error('Error fetching videos:', errorMessage);
@@ -108,14 +119,14 @@ videos: [],
       ? Math.round((correct / (questions as any[]).length) * 100)
       : 0;
 
-    // Guardar en la tabla de completaciones
+    // Guardar/actualizar en la tabla de completaciones oficial
     const { error: errorInsert } = await supabase
-      .from('user_scores')
+      .from('user_test_completions')
       .upsert([
         {
           user_id: userId,
           video_id: videoId,
-          score: scorePercent,
+          score_percent: scorePercent,
           passed: scorePercent >= 70,
           completed_at: new Date().toISOString(),
         },
@@ -126,24 +137,11 @@ videos: [],
       return { success: false, score: scorePercent, error: errorInsert.message };
     }
 
-    // Actualizar el estado local de completions para reflejar el progreso
-    set((state) => {
-      const rest = state.userTestCompletions.filter(
-        (c: any) => !(c.user_id === userId && c.video_id === videoId)
-      );
-      return {
-        userTestCompletions: [
-          ...rest,
-          {
-            user_id: userId,
-            video_id: String(videoId),
-            completed_at: new Date().toISOString(),
-            passed: scorePercent >= 70,
-            scorePercent,
-          },
-        ],
-      } as any;
-    });
+    // Refrescar completions desde DB y recalcular el siguiente video
+    try {
+      await get().fetchUserCompletionsForCourse(userId);
+      await get().determineAndSetCurrentVideo(userId);
+    } catch (_) {}
 
     return { success: scorePercent >= 70, score: scorePercent };
   },
@@ -170,70 +168,93 @@ videos: [],
   },
 
   determineAndSetCurrentVideo: async (userId: string | undefined) => {
-    // Si no hay usuario logueado, o si los videos aún no se han cargado,
-    // intenta cargar los videos y establece el video actual al primero.
-    if (get().videos.length === 0) {
-      await get().fetchVideos();
-    }
-    const allVideos = get().videos;
+    // Trabajar dentro del contexto del curso actual: get().videos ya viene filtrado por courseId
+    const courseVideos = [...(get().videos || [])].sort((a, b) => a.order - b.order);
 
-    if (allVideos.length === 0) {
-      set({ currentVideoId: null, loadingVideos: false });
+    // Si no hay videos para el curso actual
+    if (courseVideos.length === 0) {
+      set({ currentVideoId: null });
       return;
     }
 
+    // Si por cualquier motivo no hay usuario, caer al primer video del curso
     if (!userId) {
-      // Si no hay usuario logueado, por defecto va al primer video
-      const firstVideo = allVideos.find(video => video.order === 1) || allVideos[0];
+      const firstVideo = courseVideos.find(v => v.order === 1) || courseVideos[0];
       set({ currentVideoId: firstVideo ? firstVideo.id : null });
       return;
     }
 
-    set({ loadingVideos: true, errorVideos: null });
     try {
-      // 1. Obtener las pruebas completadas por el usuario
-      const { data: completedTestsData, error: completedTestsError } = await supabase
-        .from('user_test_completions') // Asume que esta es tu tabla de completaciones de tests
-        .select('video_id')
-        .eq('user_id', userId);
+      const videoIds = courseVideos.map(v => v.id);
 
-      if (completedTestsError) {
-        throw completedTestsError;
+      // Obtener completados SOLO para los videos de este curso y ese usuario
+      let completed: Array<{ video_id: string; passed: boolean; score_percent: number }> = [];
+      if (videoIds.length > 0) {
+        const { data, error } = await supabase
+          .from('user_test_completions')
+          .select('video_id, passed, score_percent')
+          .eq('user_id', userId)
+          .in('video_id', videoIds);
+        if (error) throw error;
+        completed = data || [];
       }
 
-      const completedVideoIds = new Set(completedTestsData?.map(c => c.video_id) || []);
-
-      let nextVideo: Video | null = null;
-
-      if (completedVideoIds.size === 0) {
-        // Si no ha completado ningún test, va al video con orden 1
-        nextVideo = allVideos.find(video => video.order === 1) || allVideos[0];
-      } else {
-        // Encontrar el orden más alto de los videos completados
-        const completedVideoOrders = allVideos
-          .filter(video => completedVideoIds.has(video.id))
-          .map(video => video.order);
-
-        const maxCompletedOrder = completedVideoOrders.length > 0
-          ? Math.max(...completedVideoOrders)
-          : 0;
-
-        // Buscar el siguiente video en secuencia
-        nextVideo = allVideos.find(video => video.order === maxCompletedOrder + 1) || null;
-
-        // Si no se encontró un siguiente video y el usuario ha completado todos los videos
-        if (!nextVideo && completedVideoIds.size === allVideos.length) {
-          // El usuario ha completado todos los tests, se le puede mostrar el primero o dejarlo a criterio de la UI
-          // Aquí lo establecemos al primer video para tener una posición.
-          nextVideo = allVideos[0];
-        }
+      const passedIds = new Set(completed.filter(c => c.passed).map(c => c.video_id));
+      
+      // Caso 1: No hay completados, mostrar primer video
+      if (completed.length === 0) {
+        const firstVideo = courseVideos.find(v => v.order === 1) || courseVideos[0];
+        set({ currentVideoId: firstVideo ? firstVideo.id : null });
+        return;
       }
 
-      set({ currentVideoId: nextVideo ? nextVideo.id : null, loadingVideos: false });
+      // Caso 2: Buscar el siguiente video no aprobado
+      const nextPending = courseVideos.find(v => !passedIds.has(v.id));
+      if (nextPending) {
+        set({ currentVideoId: nextPending.id });
+        return;
+      }
 
+      // Caso 3: Todos los videos están aprobados, mostrar el último
+      const lastVideo = courseVideos[courseVideos.length - 1];
+      set({ currentVideoId: lastVideo ? lastVideo.id : null });
+      
     } catch (error: unknown) {
       console.error('Error al determinar el video actual:', (error as { message: string }).message);
-      set({ errorVideos: (error as { message: string }).message, loadingVideos: false });
+      // Fallback seguro: posicionar en el primer video del curso
+      const fallback = courseVideos[0];
+      set({ currentVideoId: fallback ? fallback.id : null, errorVideos: (error as { message: string }).message });
     }
+  },
+
+  // Carga las completions del usuario para el curso actual (videos en memoria)
+  fetchUserCompletionsForCourse: async (userId: string) => {
+    const vids = get().videos || [];
+    const ids = vids.map(v => v.id);
+    if (ids.length === 0) {
+      set({ userTestCompletions: [] as any });
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('user_test_completions')
+      .select('user_id, video_id, passed, score_percent, completed_at')
+      .eq('user_id', userId)
+      .in('video_id', ids);
+
+    if (error) {
+      console.error('Error fetching completions:', error.message);
+      return;
+    }
+
+    const mapped = (data || []).map((c: any) => ({
+      user_id: c.user_id,
+      video_id: c.video_id,
+      completed_at: c.completed_at,
+      passed: !!c.passed,
+      scorePercent: typeof c.score_percent === 'number' ? c.score_percent : 0,
+    }));
+
+    set({ userTestCompletions: mapped as any });
   }
 }));

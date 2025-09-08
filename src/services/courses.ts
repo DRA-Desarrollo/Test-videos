@@ -1,11 +1,12 @@
 import { supabase } from '../utils/supabaseClient';
 import type { Course } from '../types/data';
 
-export const getCourse = async (courseOrder: number): Promise<Course | null> => {
+export const getCourse = async (courseId: string): Promise<Course | null> => {
+console.log('(courses.ts) Querying course with id:', courseId);  
   const { data, error } = await supabase
     .from('courses')
     .select('*')
-    .eq('orden', courseOrder)
+    .eq('id', courseId)
     .single();
 
   if (error) {
