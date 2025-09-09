@@ -1,4 +1,4 @@
-import React, { useState, Fragment } from 'react';
+import React from 'react';
 import { AppBar, Toolbar, Typography, Button, Box, IconButton, Tooltip } from '@mui/material';
 import { FaHome, FaInfoCircle, FaSignInAlt, FaSignOutAlt, FaUserCircle, FaChartBar } from 'react-icons/fa';
 import { Link } from 'react-router-dom';
@@ -6,7 +6,6 @@ import { MdDarkMode, MdLightMode } from 'react-icons/md';
 import { useAuthStore } from '../store/authStore';
 import { useVideoStore } from '../store/videoStore';
 import { FaArrowLeft } from 'react-icons/fa';
-import AdminPanel from './Admin/AdminPanel';
 
 interface NavbarProps {
   mode?: 'light' | 'dark';
@@ -16,9 +15,8 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ mode = 'light', onToggleMode, showBackButton = false, onBack }) => {
-  const { user, publicUser, signOut } = useAuthStore();
+  const { user, signOut } = useAuthStore();
   const { course } = useVideoStore();
-  const [adminPanelOpen, setAdminPanelOpen] = useState(false);
 //console.log("Rendering Navbar with mode:", mode, showBackButton, onToggleMode, onBack);
    
   return (
@@ -33,25 +31,24 @@ const Navbar: React.FC<NavbarProps> = ({ mode = 'light', onToggleMode, showBackB
               {mode === 'light' ? <MdDarkMode /> : <MdLightMode />}
             </IconButton>
           </Tooltip>
-          
-          {/* Ícono de admin - solo visible si el usuario es admin */}
-          {publicUser?.admin && (
-            <Tooltip title="Panel de Administración">
-              <IconButton 
-                color="inherit" 
-                onClick={() => setAdminPanelOpen(true)}
-                aria-label="admin panel"
-              >
-                <FaChartBar />
-              </IconButton>
-            </Tooltip>
-          )}
           <Button color="inherit" component={Link} to="/" startIcon={<FaHome />}>
             Dashboard
           </Button>
           <Button color="inherit" component={Link} to="/about" startIcon={<FaInfoCircle />}>
             Info Curso
           </Button>
+          {user && (user as any).admin && (
+            <Tooltip title="Ver calificaciones">
+              <IconButton 
+                color="inherit" 
+                component={Link}
+                to="/admin"
+                aria-label="ver calificaciones"
+              >
+                <FaChartBar />
+              </IconButton>
+            </Tooltip>
+          )}
           {user ? (
             <>
               <Button color="inherit" startIcon={<FaUserCircle />} disabled sx={{ textTransform: 'none', opacity: 0.85 }}>
@@ -75,13 +72,6 @@ const Navbar: React.FC<NavbarProps> = ({ mode = 'light', onToggleMode, showBackB
         </Box>
       </Toolbar>
     </AppBar>
-      
-      {/* Admin Panel */}
-      <AdminPanel 
-        open={adminPanelOpen} 
-        onClose={() => setAdminPanelOpen(false)} 
-      />
-    </>
   );
 };
 

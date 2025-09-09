@@ -30,7 +30,7 @@ const Test: React.FC<TestProps> = ({ userId, videoId, questions }) => {
 
   const completion = userTestCompletions.find(c => c.video_id === videoId);
   const testPassed = completion?.passed;
-  const allPerfect = userTestCompletions.filter(c => c.score_percent === 100).length === 12;
+  const allPerfect = userTestCompletions.filter(c => c.scorePercent === 100).length === 12;
 
   const handleChange = (qid: string, value: string) => {
     setAnswers(prev => ({ ...prev, [qid]: value }));
@@ -50,7 +50,7 @@ const Test: React.FC<TestProps> = ({ userId, videoId, questions }) => {
   if (testPassed) {
     return (
       <Alert severity="success" sx={{ mt: 2 }}>
-        ¡Test aprobado! Puntaje: {completion?.score_percent ?? '--'}%
+        ¡Test aprobado! Puntaje: {completion?.scorePercent ?? '--'}%
       </Alert>
     );
   }

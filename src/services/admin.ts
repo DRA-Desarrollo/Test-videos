@@ -1,50 +1,40 @@
 import { supabase } from '../utils/supabaseClient';
-import type { PublicUser } from './auth';
 
-// Interfaz para información de curso
-export interface CourseInfo {
+// Tipos de datos
+export interface User {
+  id: string;
+  email: string;
+  admin?: boolean;
+}
+
+export interface Course {
   id: string;
   name: string;
-  description?: string;
-  cover_image?: string;
 }
 
-// Interfaz para información de video
-export interface VideoInfo {
+export interface Video {
   id: string;
   title: string;
-  description?: string;
-  youtube_url: string;
-  course_id: string;
   order: number;
+  course_id: string;
 }
 
-// Interfaz para información de test completion
-export interface TestCompletionInfo {
-  id: string;
-  user_id: string;
+export interface TestCompletion {
   video_id: string;
-  score_percent: number;
-  passed: boolean;
   completed_at: string;
+  passed: boolean;
+  scorePercent: number;
 }
 
-// Interfaz para el árbol de datos de usuario
 export interface UserProgressTree {
-  user: PublicUser;
-  courses: CourseProgressTree[];
-}
-
-// Interfaz para el árbol de datos de curso
-export interface CourseProgressTree {
-  course: CourseInfo;
-  videos: VideoProgressTree[];
-}
-
-// Interfaz para el árbol de datos de video
-export interface VideoProgressTree {
-  video: VideoInfo;
-  completions: TestCompletionInfo[];
+  user: User;
+  courses: {
+    course: Course;
+    videos: {
+      video: Video;
+      completion: TestCompletion | null;
+    }[];
+  }[];
 }
 
 // Función para obtener todos los usuarios con sus progresos
@@ -55,156 +45,174 @@ export const getAllUsersProgress = async (): Promise<UserProgressTree[]> => {
       .from('users')
       .select('*')
       .order('email');
-    
-    if (usersError) {
-      console.error('Error fetching users:', usersError);
-      return [];
-    }
 
-    // Obtener todos los cursos
-    const { data: courses, error: coursesError } = await supabase
-      .from('courses')
+    if (usersError) throw usersError;
+
+    // Obtener todas las completaciones de tests
+    const { data: completions, error: completionsError } = await supabase
+      .from('user_test_completions')
       .select('*')
-      .order('name');
-    
-    if (coursesError) {
-      console.error('Error fetching courses:', coursesError);
-      return [];
-    }
+      .order('completed_at', { ascending: false });
+
+    if (completionsError) throw completionsError;
 
     // Obtener todos los videos
     const { data: videos, error: videosError } = await supabase
       .from('videos')
       .select('*')
-      .order('course_id, order');
-    
-    if (videosError) {
-      console.error('Error fetching videos:', videosError);
-      return [];
-    }
+      .order('order');
 
-    // Obtener todos los test completions
-    const { data: completions, error: completionsError } = await supabase
-      .from('user_test_completions')
-      .select('*')
-      .order('completed_at', { ascending: false });
-    
-    if (completionsError) {
-      console.error('Error fetching test completions:', completionsError);
-      return [];
-    }
+    if (videosError) throw videosError;
 
-    // Construir el árbol de datos
-    const userProgressTree: UserProgressTree[] = users.map(user => {
-      const userCourses: CourseProgressTree[] = courses.map(course => {
-        const courseVideos = videos.filter(video => video.course_id === course.id);
-        
-        const courseVideosWithProgress: VideoProgressTree[] = courseVideos.map(video => {
-          const videoCompletions = completions.filter(completion => 
-            completion.video_id === video.id && completion.user_id === user.id
-          );
-          
-          return {
-            video,
-            completions: videoCompletions
-          };
-        });
-        
-        return {
-          course,
-          videos: courseVideosWithProgress
-        };
+    // Obtener todos los cursos
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select('*');
+
+    if (coursesError) throw coursesError;
+
+    // Organizar los datos por usuario
+    const userProgressMap = new Map<string, UserProgressTree>();
+
+    // Inicializar todos los usuarios en el mapa
+    users.forEach(user => {
+      userProgressMap.set(user.id, {
+        user: {
+          id: user.id,
+          email: user.email,
+          admin: user.admin || false
+        },
+        courses: []
       });
-      
-      return {
-        user,
-        courses: userCourses
-      };
     });
 
-    return userProgressTree;
+    // Agrupar videos por curso
+    const videosByCourse = new Map<string, Video[]>();
+    courses.forEach(course => {
+      videosByCourse.set(course.id, videos.filter(v => v.course_id === course.id));
+    });
+
+    // Para cada completación, agregarla al usuario correspondiente
+    completions.forEach(completion => {
+      const userProgress = userProgressMap.get(completion.user_id);
+      if (!userProgress) return;
+
+      // Encontrar el video correspondiente
+      const video = videos.find(v => v.id === completion.video_id);
+      if (!video) return;
+
+      // Encontrar el curso correspondiente
+      const course = courses.find(c => c.id === video.course_id);
+      if (!course) return;
+
+      // Buscar si el curso ya existe en el progreso del usuario
+      let courseProgress = userProgress.courses.find(c => c.course.id === course.id);
+      
+      if (!courseProgress) {
+        courseProgress = {
+          course,
+          videos: []
+        };
+        userProgress.courses.push(courseProgress);
+      }
+
+      // Buscar si el video ya existe en el curso
+      let videoProgress = courseProgress.videos.find(v => v.video.id === video.id);
+      
+      if (!videoProgress) {
+        videoProgress = {
+          video,
+          completion: null
+        };
+        courseProgress.videos.push(videoProgress);
+      }
+
+      // Actualizar la completación (usar la más reciente si hay múltiples)
+      if (!videoProgress.completion || 
+          new Date(completion.completed_at) > new Date(videoProgress.completion.completed_at)) {
+        videoProgress.completion = {
+          video_id: completion.video_id,
+          completed_at: completion.completed_at,
+          passed: completion.passed,
+          scorePercent: completion.score_percent || 0
+        };
+      }
+    });
+
+    // Convertir el mapa a array y filtrar usuarios que no tienen completaciones
+    return Array.from(userProgressMap.values()).filter(userProgress => 
+      userProgress.courses.some(course => 
+        course.videos.some(video => video.completion !== null)
+      )
+    );
+
   } catch (error) {
-    console.error('Error in getAllUsersProgress:', error);
-    return [];
+    console.error('Error en getAllUsersProgress:', error);
+    throw error;
   }
 };
 
 // Función para obtener el progreso de un usuario específico
 export const getUserProgress = async (userId: string): Promise<UserProgressTree | null> => {
   try {
-    // Obtener el usuario
-    const { data: user, error: userError } = await supabase
+    const allUsersProgress = await getAllUsersProgress();
+    return allUsersProgress.find(user => user.user.id === userId) || null;
+  } catch (error) {
+    console.error('Error en getUserProgress:', error);
+    throw error;
+  }
+};
+
+// Función para obtener estadísticas generales
+export const getAdminStats = async () => {
+  try {
+    const { data: users, error: usersError } = await supabase
       .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    
-    if (userError || !user) {
-      console.error('Error fetching user:', userError);
-      return null;
-    }
+      .select('*', { count: 'exact' });
 
-    // Obtener todos los cursos
-    const { data: courses, error: coursesError } = await supabase
-      .from('courses')
-      .select('*')
-      .order('name');
-    
-    if (coursesError) {
-      console.error('Error fetching courses:', coursesError);
-      return null;
-    }
+    if (usersError) throw usersError;
 
-    // Obtener todos los videos
-    const { data: videos, error: videosError } = await supabase
-      .from('videos')
-      .select('*')
-      .order('course_id, order');
-    
-    if (videosError) {
-      console.error('Error fetching videos:', videosError);
-      return null;
-    }
-
-    // Obtener todos los test completions del usuario
     const { data: completions, error: completionsError } = await supabase
       .from('user_test_completions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('completed_at', { ascending: false });
-    
-    if (completionsError) {
-      console.error('Error fetching test completions:', completionsError);
-      return null;
-    }
+      .select('*', { count: 'exact' });
 
-    // Construir el árbol de datos
-    const userCourses: CourseProgressTree[] = courses.map(course => {
-      const courseVideos = videos.filter(video => video.course_id === course.id);
-      
-      const courseVideosWithProgress: VideoProgressTree[] = courseVideos.map(video => {
-        const videoCompletions = completions.filter(completion => 
-          completion.video_id === video.id
-        );
-        
-        return {
-          video,
-          completions: videoCompletions
-        };
-      });
-      
-      return {
-        course,
-        videos: courseVideosWithProgress
-      };
-    });
+    if (completionsError) throw completionsError;
+
+    const { data: videos, error: videosError } = await supabase
+      .from('videos')
+      .select('*', { count: 'exact' });
+
+    if (videosError) throw videosError;
+
+    const { data: courses, error: coursesError } = await supabase
+      .from('courses')
+      .select('*', { count: 'exact' });
+
+    if (coursesError) throw coursesError;
+
+    const totalUsers = users?.length || 0;
+    const totalCompletions = completions?.length || 0;
+    const totalVideos = videos?.length || 0;
+    const totalCourses = courses?.length || 0;
+
+    const passedTests = completions?.filter(c => c.passed).length || 0;
+    const averageScore = completions?.length > 0 
+      ? completions.reduce((sum, c) => sum + (c.score_percent || 0), 0) / completions.length 
+      : 0;
 
     return {
-      user,
-      courses: userCourses
+      totalUsers,
+      totalCompletions,
+      totalVideos,
+      totalCourses,
+      passedTests,
+      failedTests: totalCompletions - passedTests,
+      passRate: totalCompletions > 0 ? (passedTests / totalCompletions) * 100 : 0,
+      averageScore: Math.round(averageScore)
     };
+
   } catch (error) {
-    console.error('Error in getUserProgress:', error);
-    return null;
+    console.error('Error en getAdminStats:', error);
+    throw error;
   }
 };

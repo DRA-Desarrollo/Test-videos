@@ -6,6 +6,7 @@ import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
 import AboutCourse from './pages/AboutCourse';
 import TestPage from './pages/TestPage';
+import AdminPage from './pages/AdminPage';
 import { useAuthStore } from './store/authStore';
 import './App.css';
 import CourseListPage from './pages/CourseListPage';
@@ -81,6 +82,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <TestPage mode={themeMode} onToggleMode={toggleThemeMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute>
+                <AdminPage />
               </ProtectedRoute>
             }
           />

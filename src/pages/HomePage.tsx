@@ -143,14 +143,10 @@ useEffect(() => {
     <>
       <Navbar mode={mode} onToggleMode={onToggleMode} showBackButton onBack={() => navigate('/')} />
       
-      {/* Contenedor principal con flujo normal y ancho controlado */}
       <Box sx={{ 
         display: 'flex', 
-        flexDirection: 'column',
-        height: 'calc(100vh - 64px)', // Restar altura exacta del navbar
-        maxWidth: '1200px',           // Ancho máximo como el navbar
-        mx: 'auto',                   // Centrar horizontalmente
-        width: '100%',                // Ancho completo hasta el máximo
+        flexDirection: 'column', 
+        height: 'calc(100vh - 40px)',
         overflow: 'hidden'
       }}>
         {/* Panel colapsible con lista de videos */}
@@ -160,59 +156,48 @@ useEffect(() => {
               video={currentVideo}
               videos={videos}
               currentVideoId={currentVideoId}
-              userTestCompletions={userTestCompletions}
+              userTestCompletions={userTestCompletions.map(c => ({ video_id: c.video_id, passed: c.passed ?? false }))}
               onVideoSelect={setCurrentVideo}
             />
           </Box>
         </Drawer>
         
-        {/* Contenido principal - distribuido con alturas específicas */}
+        {/* Contenido principal */}
         <Box sx={{ 
           flex: 1, 
           display: 'flex', 
           flexDirection: 'column',
           overflow: 'hidden'
         }}>
-          {/* Barra de navegación y progreso - altura fija reducida */}
-          <Box sx={{ 
-            height: '50px', // Reducido de 60px a 50px
-            p: 0.5, // Reducido padding
-            backgroundColor: 'background.paper', 
-            borderBottom: 1, 
-            borderColor: 'divider',
-            display: 'flex',
-            alignItems: 'center'
-          }}>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%' }}>
-              <IconButton onClick={() => setOpen(true)} aria-label="abrir módulos">
-                <FaBars />
-              </IconButton>
-              
-              {/* Barra de progreso del curso */}
-              <Box sx={{ flex: 1 }}>
-                <CourseProgressBar current={courseProgress.current} total={courseProgress.total} percent={courseProgress.percent} />
-              </Box>
-            </Stack>
-          </Box>
+          {/* Barra de navegación y progreso */}
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ p: 0.5 }}>
+            <IconButton onClick={() => setOpen(true)} aria-label="abrir módulos">
+              <FaBars />
+            </IconButton>
+            
+            {/* Barra de progreso del curso */}
+            <Box sx={{ flex: 1 }}>
+              <CourseProgressBar current={courseProgress.current} total={courseProgress.total} percent={courseProgress.percent} />
+            </Box>
+          </Stack>
 
-          {/* Card del video actual - equilibrio perfecto */}
+          <Divider />
+
+          {/* Card del video actual */}
           <Box sx={{ 
-            flex: 0.85, // Entre 0.7 y 1 - equilibrio
+            flex: 1, 
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            p: 1, // Padding normal
-            minHeight: 0,
-            backgroundColor: 'background.default'
+            p: 0.5,
+            minHeight: 0
           }}>
             {currentVideo ? (
               <Box sx={{ 
                 width: '100%',
+                maxWidth: 900,
                 height: '100%',
-                maxWidth: '950px', // Entre 800px y 1000px
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
+                maxHeight: '45vh'
               }}>
                 <VideoCard video={currentVideo} />
               </Box>
@@ -222,7 +207,6 @@ useEffect(() => {
                 alignItems: 'center', 
                 justifyContent: 'center', 
                 height: '100%', 
-                width: '100%',
                 border: 1, 
                 borderColor: 'grey.300',
                 borderRadius: 1,
@@ -233,86 +217,73 @@ useEffect(() => {
             )}
           </Box>
 
-          {/* Barra inferior con progreso, navegador y botón - altura justa */}
-          <Box sx={{ 
-            height: '100px', // Entre 90px y 120px
-            backgroundColor: 'background.paper', 
-            borderTop: 1, 
-            borderColor: 'divider',
-            p: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}>
-            <Stack spacing={0.3}>
-              <TestProgressBar percent={testPercent} />
-              
-              <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
-                {/* Navegación entre videos */}
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <IconButton 
-                    onClick={navigateToFirst} 
-                    disabled={!canNavigateToFirst}
-                    aria-label="primer video"
-                    size="small"
-                  >
-                    <FaStepBackward />
-                  </IconButton>
-                  <IconButton 
-                    onClick={navigateToPrevious} 
-                    disabled={!canNavigateToPrevious}
-                    aria-label="video anterior"
-                    size="small"
-                  >
-                    <FaChevronLeft />
-                  </IconButton>
-                  <Typography variant="body2" sx={{ minWidth: 50, textAlign: 'center', fontSize: '0.8rem' }}>
-                    {currentVideo ? `${currentVideo.order}/${videos.length}` : '0/0'}
-                  </Typography>
-                  <IconButton 
-                    onClick={navigateToNext} 
-                    disabled={!canNavigateToNext}
-                    aria-label="siguiente video"
-                    size="small"
-                  >
-                    <FaChevronRight />
-                  </IconButton>
-                  <IconButton 
-                    onClick={navigateToLast} 
-                    disabled={!canNavigateToLast}
-                    aria-label="último video"
-                    size="small"
-                  >
-                    <FaStepForward />
-                  </IconButton>
-                </Stack>
+          <Divider />
 
-                {/* Botón "Hacer Test" y estado */}
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={handleOpenTest}
-                    disabled={disableTest || loadingQuestions}
-                    size="small"
-                    sx={{ 
-                      minWidth: 100,
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    {loadingQuestions ? 'Cargando...' : 'Hacer Test'}
-                  </Button>
-                  
-                  {allVideosCompleted && isLast && (
-                    <Typography color="success.main" variant="body2" sx={{ fontWeight: 'bold' }}>
-                      ¡Curso completado!
-                    </Typography>
-                  )}
-                </Stack>
+          {/* Barra de progreso del test, navegador y botón */}
+          <Stack spacing={0.3} sx={{ p: 0.3 }}>
+            <TestProgressBar percent={testPercent} />
+            
+            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={2}>
+              {/* Navegación entre videos */}
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <IconButton 
+                  onClick={navigateToFirst} 
+                  disabled={!canNavigateToFirst}
+                  aria-label="primer video"
+                  size="small"
+                >
+                  <FaStepBackward />
+                </IconButton>
+                <IconButton 
+                  onClick={navigateToPrevious} 
+                  disabled={!canNavigateToPrevious}
+                  aria-label="video anterior"
+                  size="small"
+                >
+                  <FaChevronLeft />
+                </IconButton>
+                <Typography variant="body2" sx={{ minWidth: 50, textAlign: 'center', fontSize: '0.75rem' }}>
+                  {currentVideo ? `${currentVideo.order}/${videos.length}` : '0/0'}
+                </Typography>
+                <IconButton 
+                  onClick={navigateToNext} 
+                  disabled={!canNavigateToNext}
+                  aria-label="siguiente video"
+                  size="small"
+                >
+                  <FaChevronRight />
+                </IconButton>
+                <IconButton 
+                  onClick={navigateToLast} 
+                  disabled={!canNavigateToLast}
+                  aria-label="último video"
+                  size="small"
+                >
+                  <FaStepForward />
+                </IconButton>
+              </Stack>
+
+              {/* Botón "Hacer Test" y estado */}
+              <Stack direction="row" alignItems="center" spacing={1}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleOpenTest}
+                  disabled={disableTest || loadingQuestions}
+                  size="small"
+                  sx={{ minWidth: 80, fontSize: '0.75rem' }}
+                >
+                  {loadingQuestions ? 'Cargando...' : 'Hacer Test'}
+                </Button>
+                
+                {allVideosCompleted && isLast && (
+                  <Typography color="success.main" variant="body2" sx={{ fontSize: '0.75rem' }}>
+                    ¡Curso completado!
+                  </Typography>
+                )}
               </Stack>
             </Stack>
-          </Box>
+          </Stack>
         </Box>
       </Box>
     </>
